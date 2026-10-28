@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codex-migrate-windows-mac"
+version = "0.1.0a1"
+description = "Local Codex project and history migration with verified path repair"
+readme = "README.en.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Codex Migrate Windows–Mac contributors"}]
+dependencies = []
+
+[project.scripts]
+codex-migrate = "codex_migrate.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+codex_migrate = ["profiles/*.json"]

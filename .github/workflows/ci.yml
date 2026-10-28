@@ -1,0 +1,28 @@
+name: Synthetic tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        python: ['3.11', '3.12']
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit and synthetic workflow tests
+        run: python -m unittest discover -s tests -v
+      - name: CLI help
+        run: python -m codex_migrate --help
