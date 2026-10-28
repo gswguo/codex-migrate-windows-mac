@@ -3,14 +3,25 @@ import json
 import hashlib
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 PROFILE = Path(__file__).parents[1] / 'src/codex_migrate/profiles/native-v1.json'
 
+@contextmanager
+def managed_connection(*args,**kwargs):
+    """A transaction context which also releases native Windows file handles."""
+    connection=sqlite3.connect(*args,**kwargs)
+    try:
+        with connection:
+            yield connection
+    finally:
+        connection.close()
+
 def create_schema(path: Path, kind: str):
     path.parent.mkdir(parents=True, exist_ok=True)
     metadata = json.loads(PROFILE.read_text())['databases'][kind]
-    with sqlite3.connect(path) as db:
+    with managed_connection(path) as db:
         for obj in sorted(metadata['objects'], key=lambda x: x['type'] != 'table'):
             db.execute(obj['sql'])
         for m in metadata['migrations']:
@@ -36,7 +47,7 @@ def make_home(root: Path, *, platform='macos', prefix='source'):
     create_schema(home / 'state_5.sqlite', 'state')
     create_schema(home / 'thread_history_1.sqlite', 'history')
     rollouts = {}
-    with sqlite3.connect(home / 'state_5.sqlite') as db:
+    with managed_connection(home / 'state_5.sqlite') as db:
         insert(db, 'projects', {'id':project_id,'name':'Synthetic project','position':0,'created_at_ms':1000,'updated_at_ms':2000})
         insert(db, 'project_roots', {'project_id':project_id,'position':0,'path':str(project)})
         for tid, pid in [(thread_id,project_id),(unassigned,None)]:
@@ -53,7 +64,7 @@ def make_home(root: Path, *, platform='macos', prefix='source'):
             lines=[(json.dumps(x,ensure_ascii=False)+'\n').encode() for x in events]
             rollout.write_bytes(b''.join(lines));rollouts[tid]=rollout
             insert(db,'threads',{'id':tid,'rollout_path':str(rollout),'created_at':1767225600,'updated_at':1767225603,'source':'cli','model_provider':'openai','cwd':str(project),'title':'Synthetic conversation','sandbox_policy':'"read-only"','approval_mode':'on-request','history_mode':'paginated','project_id':pid,'cli_version':'0.164.0-alpha.11.1','has_user_event':1,'first_user_message':message})
-            with sqlite3.connect(home / 'thread_history_1.sqlite') as history:
+            with managed_connection(home / 'thread_history_1.sqlite') as history:
                 insert(history,'thread_items',{'thread_id':tid,'turn_id':turn_id,'item_id':item['id'],'rollout_ordinal':3,'created_at_ms':2000,'item_json':json.dumps(item),'item_type':'userMessage','updated_at_ordinal':3})
                 insert(history,'thread_turns',{'thread_id':tid,'turn_id':turn_id,'rollout_ordinal':1,'status':'completed','rollout_byte_offset':len(lines[0]),'rollout_end_ordinal':4,'rollout_end_byte_offset':sum(map(len,lines))})
                 insert(history,'thread_history_projection_state',{'thread_id':tid,'next_rollout_byte_offset':sum(map(len,lines)),'next_rollout_ordinal':5})

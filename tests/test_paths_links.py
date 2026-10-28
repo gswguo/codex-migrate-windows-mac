@@ -23,7 +23,7 @@ class PathsLinksTests(unittest.TestCase):
     def test_windows_case_segments_longest_prefix_and_required_mapping(self):
         nested = self.root / 'nested'
         mapper = PathMapper([('E:/work', str(self.target)), ('e:/WORK/sub', str(nested))])
-        self.assertEqual(mapper.map_path(r'e:\WORK\sub\文.txt'), str(nested / '文.txt'))
+        self.assertEqual(mapper.map_path(r'e:\WORK\sub\文.txt'), (nested / '文.txt').as_posix())
         self.assertIsNone(mapper.map_path('E:/worker/file'))
         with self.assertRaises(MigrationError):
             mapper.map_path('Q:/unmapped', required=True)
@@ -46,7 +46,7 @@ class PathsLinksTests(unittest.TestCase):
 
     def test_unc_extended_and_reverse_windows_mapping(self):
         mapper = PathMapper([(r'\\server\share\root', str(self.target)), ('/old/project', 'D:/New Project')])
-        self.assertEqual(mapper.map_path(r'\\?\UNC\server\share\root\中文.txt'), str(self.target / '中文.txt'))
+        self.assertEqual(mapper.map_path(r'\\?\UNC\server\share\root\中文.txt'), (self.target / '中文.txt').as_posix())
         self.assertEqual(mapper.map_path('/old/project/folder/file.txt'), 'D:/New Project/folder/file.txt')
         self.assertIsNone(mapper.map_path('/old/project2/file'))
 
@@ -55,7 +55,7 @@ class PathsLinksTests(unittest.TestCase):
         mapper = PathMapper([('E:/work', str(self.target))], expected_hashes={old: hashlib.sha256(self.file.read_bytes()).hexdigest()})
         result = mapper.resolve_link('file:///E:/work/%E6%8A%A5%E5%91%8A%20(final).pdf#page=3')
         self.assertEqual(result['status'], 'verified')
-        self.assertEqual(result['path'], str(self.file))
+        self.assertEqual(result['path'], self.file.as_posix())
         self.assertTrue(result['new'].endswith('#page=3'))
         wrong = PathMapper([('E:/work', str(self.target))], expected_hashes={old: '0' * 64})
         self.assertEqual(wrong.resolve_link(old)['status'], 'missing')
@@ -66,8 +66,8 @@ class PathsLinksTests(unittest.TestCase):
         mapper = PathMapper([('E:/work', str(final))], validation_mappings=[(str(final), str(self.target))], expected_hashes={str(final / self.file.name): digest})
         result = mapper.resolve_link('E:/work/' + self.file.name)
         self.assertEqual(result['status'], 'verified')
-        self.assertEqual(result['new'], str(final / self.file.name))
-        self.assertEqual(result['path'], str(final / self.file.name))
+        self.assertEqual(result['new'], (final / self.file.name).as_posix())
+        self.assertEqual(result['path'], (final / self.file.name).as_posix())
         self.assertEqual(mapper.resolve_link(self.file.name)['status'], 'verified')
         self.assertFalse(final.exists())
         with self.assertRaises(MigrationError):
@@ -116,7 +116,7 @@ class PathsLinksTests(unittest.TestCase):
         old = 'E:/work/报告 (final).pdf'
         text = f'Prose {old}\n`[code](<{old}>)`\n```md\n[code](<{old}>)\n```\n[label](<{old}:12>) and ![image](<{old}#page=2>)\n[ref][doc]\n[doc]: <{old}> "Title"\n'
         changed, records = repair_markdown(text, self.mapper)
-        expected = text.replace(f'[label](<{old}:12>)', f'[label](<{self.file}:12>)').replace(f'![image](<{old}#page=2>)', f'![image](<{self.file}#page=2>)').replace(f'[doc]: <{old}>', f'[doc]: <{self.file}>')
+        expected = text.replace(f'[label](<{old}:12>)', f'[label](<{self.file.as_posix()}:12>)').replace(f'![image](<{old}#page=2>)', f'![image](<{self.file.as_posix()}#page=2>)').replace(f'[doc]: <{old}>', f'[doc]: <{self.file.as_posix()}>')
         self.assertEqual(changed, expected)
         self.assertEqual(sum(r.get('new') is not None for r in records), 3)
 
@@ -124,7 +124,7 @@ class PathsLinksTests(unittest.TestCase):
         old = 'E:/work/报告 (final).pdf'
         text = '[x](E:/work/报告%20(final).pdf) [y](E:/work/报告\\ \\(final\\).pdf)'
         output, records = repair_markdown(text, self.mapper)
-        self.assertEqual(output, f'[x](<{self.file}>) [y](<{self.file}>)')
+        self.assertEqual(output, f'[x](<{self.file.as_posix()}>) [y](<{self.file.as_posix()}>)')
         self.assertEqual(len(records), 2)
 
     def test_missing_and_external_markdown_stay_unchanged(self):
@@ -140,7 +140,7 @@ class PathsLinksTests(unittest.TestCase):
                 'content': [{'type': kind, 'path': old, 'name': 'synthetic'} for kind in kinds]
                            + [{'type': 'unknownFutureInput', 'path': old}]}
         updated, changes = transform_item(item, self.mapper)
-        self.assertEqual([value['path'] for value in updated['content'][:-1]], [str(self.file)] * 4)
+        self.assertEqual([value['path'] for value in updated['content'][:-1]], [self.file.as_posix()] * 4)
         self.assertEqual(updated['content'][-1]['path'], old)
         self.assertEqual(item['content'][0]['path'], old)
         self.assertEqual(len(changes), 4)
@@ -155,7 +155,7 @@ class PathsLinksTests(unittest.TestCase):
                                   {'byteRange': {'start': start, 'end': start + len('@token')}, 'placeholder': 'mention'}]}]}
         updated, changes = transform_item(item, self.mapper)
         content = updated['content'][0]
-        expected = '前缀 [a](<' + str(simple) + '>) 后缀 🔬 @token'
+        expected = '前缀 [a](<' + simple.as_posix() + '>) 后缀 🔬 @token'
         self.assertEqual(content['text'], expected)
         self.assertEqual(content['text_elements'][0], item['content'][0]['text_elements'][0])
         span = content['text_elements'][1]['byteRange']
@@ -175,7 +175,7 @@ class PathsLinksTests(unittest.TestCase):
         unresolved = [record for record in changes if record['status'] == 'unsupported-text-elements']
         self.assertEqual(len(unresolved), 1)
         self.assertIsNone(unresolved[0]['new'])
-        self.assertEqual(unresolved[0]['proposed_new'], str(self.file))
+        self.assertEqual(unresolved[0]['proposed_new'], self.file.as_posix())
 
     def test_invalid_native_text_element_ranges_never_patch_text(self):
         text = '中 [report](<E:/work/报告 (final).pdf>)'
@@ -193,9 +193,9 @@ class PathsLinksTests(unittest.TestCase):
         old = 'E:/work/报告 (final).pdf'
         original = {'id': 'item-synthetic', 'type': 'agentMessage', 'text': f'[report](<{old}>)', 'command': f'cat {old}', 'custom': {'text': f'[ignore](<{old}>)'}, 'inputImages': [{'path': old}], 'savedPath': old}
         updated, changes = transform_item(original, self.mapper)
-        self.assertEqual(updated['text'], f'[report](<{self.file}>)')
-        self.assertEqual(updated['inputImages'][0]['path'], str(self.file))
-        self.assertEqual(updated['savedPath'], str(self.file))
+        self.assertEqual(updated['text'], f'[report](<{self.file.as_posix()}>)')
+        self.assertEqual(updated['inputImages'][0]['path'], self.file.as_posix())
+        self.assertEqual(updated['savedPath'], self.file.as_posix())
         self.assertEqual(updated['custom'], original['custom'])
         self.assertEqual(updated['command'], original['command'])
         self.assertEqual(original['savedPath'], old)

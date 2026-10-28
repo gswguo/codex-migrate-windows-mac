@@ -50,13 +50,13 @@ class HistoryTests(unittest.TestCase):
         chunks = output.splitlines(keepends=True)
         parsed = [json.loads(c) for c in chunks]
         self.assertEqual([e['ordinal'] for e in parsed], [10, 12])
-        self.assertEqual(parsed[0]['payload']['cwd'], str(self.project))
-        self.assertIn(str(self.project / 'f.pdf'), parsed[1]['payload']['message'])
+        self.assertEqual(parsed[0]['payload']['cwd'], self.project.as_posix())
+        self.assertIn((self.project / 'f.pdf').as_posix(), parsed[1]['payload']['message'])
         turn = result['history_rows']['thread_turns'][0]
         self.assertEqual(turn['rollout_byte_offset'], 0)
         self.assertEqual(turn['rollout_end_byte_offset'], len(output))
         self.assertEqual(result['history_rows']['thread_history_projection_state'][0]['next_rollout_byte_offset'], len(chunks[0]))
-        self.assertIn(str(self.project), result['history_rows']['thread_items'][0]['item_json'])
+        self.assertIn(self.project.as_posix(), result['history_rows']['thread_items'][0]['item_json'])
         self.assertEqual(rows, before)
         self.assertEqual(source.read_bytes(), b''.join(line(e) for e in events))
 
@@ -66,7 +66,7 @@ class HistoryTests(unittest.TestCase):
         rows={'thread_realtime_items':[{'thread_id':'a','item_id':'synthetic-realtime-item','rollout_ordinal':12,'item_json':json.dumps(item)}]}
         result=rewrite_histories({'a':source},self.root/'realtime-out',self.mapper,rows)
         updated=json.loads(result['history_rows']['thread_realtime_items'][0]['item_json'])
-        self.assertIn(str(self.project/'f.pdf'),updated['text'])
+        self.assertIn((self.project/'f.pdf').as_posix(),updated['text'])
         self.assertEqual(result['history_rows']['thread_realtime_items'][0]['rollout_ordinal'],12)
         self.assertEqual(json.loads(rows['thread_realtime_items'][0]['item_json']),item)
 
@@ -226,7 +226,7 @@ class HistoryTests(unittest.TestCase):
         content = projected['content'][0]
         span = content['text_elements'][0]['byteRange']
         self.assertEqual(content['text'].encode()[span['start']:span['end']].decode(), '@special')
-        self.assertEqual(projected['content'][1]['path'], str(self.project / 'f.pdf'))
+        self.assertEqual(projected['content'][1]['path'], (self.project / 'f.pdf').as_posix())
 
     def test_context_ancestor_is_copied_exactly_and_only_affected_rows_return(self):
         parent_events = self.events('parent')
@@ -249,8 +249,8 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(Path(result['rollouts']['parent']).read_bytes(), original)
         updated = [json.loads(raw) for raw in Path(result['rollouts']['child']).read_bytes().splitlines()]
         self.assertEqual(updated[0]['payload']['history_base']['end_byte_offset'], len(first))
-        self.assertEqual(updated[0]['payload']['cwd'], str(self.project))
-        self.assertIn(str(self.project / 'f.pdf'), updated[1]['payload']['message'])
+        self.assertEqual(updated[0]['payload']['cwd'], self.project.as_posix())
+        self.assertIn((self.project / 'f.pdf').as_posix(), updated[1]['payload']['message'])
         self.assertEqual([row['thread_id'] for row in result['history_rows']['thread_turns']], ['child'])
         self.assertEqual([row['thread_id'] for row in result['history_rows']['thread_items']], ['child'])
         self.assertEqual({change['thread_id'] for change in result['changes']}, {'child'})
@@ -272,7 +272,7 @@ class HistoryTests(unittest.TestCase):
         events.append({'ordinal': 20, 'type': 'turn_context', 'payload': {'cwd': 'E:/p', 'workspace_roots': ['E:/p', 'Q:/unknown'], 'approval_policy': 'never', 'sandbox_policy': {'type': 'danger-full-access', 'network_access': True, 'writable_roots': ['E:/p', 'Q:/unknown']}}})
         result = rewrite_histories({'a': self.rollout('a', events)}, self.root / 'safe', self.mapper, {})
         context = json.loads(Path(result['rollouts']['a']).read_bytes().splitlines()[-1])['payload']
-        self.assertEqual(context['workspace_roots'], [str(self.project)])
+        self.assertEqual(context['workspace_roots'], [self.project.as_posix()])
         self.assertEqual(context['approval_policy'], 'on-request')
         self.assertEqual(context['sandbox_policy']['type'], 'workspace-write')
         self.assertFalse(context['sandbox_policy']['network_access'])

@@ -56,7 +56,7 @@ class CliTests(unittest.TestCase):
         with self.operations(plan_import=plan):
             code, out, err = self.invoke(['plan', '--bundle', 'bundle.zip', '--home', '/synthetic/home', '--sqlite-home', '/synthetic/db', '--destination', '/synthetic/project', '--work', '/synthetic/stage', '--yes'])
         self.assertEqual(code, 0)
-        self.assertEqual(json.loads(out), {'ok': True, 'result': {'plan': '/synthetic/stage/plan.json'}})
+        self.assertEqual(json.loads(out), {'ok': True, 'result': {'plan': str(Path('/synthetic/stage/plan.json'))}})
         self.assertEqual(calls, [(Path('bundle.zip'), Path('/synthetic/home'), Path('/synthetic/project'), Path('/synthetic/stage'), {'sqlite_home': Path('/synthetic/db')})])
         self.assertEqual(err, '')
 
@@ -70,7 +70,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(calls[0][1], [('E:/old', '/synthetic/new')])
         self.assertEqual(calls[0][3], {'thread_ids': ['synthetic-thread'], 'sqlite_home': None})
-        self.assertEqual(json.loads(out)['result']['plan'], 'repair/plan.json')
+        self.assertEqual(json.loads(out)['result']['plan'], str(Path('repair/plan.json')))
 
     def test_apply_recover_verify_forward_only_plan_path(self):
         for command, function in [('apply', 'apply_plan'), ('recover', 'recover_plan'), ('verify', 'verify_plan')]:

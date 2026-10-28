@@ -486,6 +486,22 @@ class TransactionTests(unittest.TestCase):
                     apply_transaction(journal, guard=self.guard, fault=chmod)
                 self.assertEqual(Path(change['target']).read_bytes(), b'old')
 
+    def test_windows_missing_child_below_regular_file_fails_before_journal_creation(self):
+        ancestor = self.target / 'regular-file'
+        ancestor.write_bytes(b'preserve')
+        destination = ancestor / 'child'
+        original_lstat = Path.lstat
+        def windows_missing_child(path, *args, **kwargs):
+            if ancestor in path.parents:
+                raise FileNotFoundError('Windows reports a missing child under a regular file')
+            return original_lstat(path, *args, **kwargs)
+        journals = self.root / 'new-journals'
+        with patch.object(Path, 'lstat', windows_missing_child):
+            with self.assertRaises(MigrationError):
+                prepare_transaction([], journals, directories=[destination], guard=self.guard)
+        self.assertFalse(journals.exists())
+        self.assertEqual(ancestor.read_bytes(), b'preserve')
+
     def test_platform_probe_failure_and_live_app_fail_closed(self):
         with patch.object(platforms, '_processes', side_effect=OSError('denied')):
             with self.assertRaises(MigrationError):

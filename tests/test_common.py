@@ -3,10 +3,29 @@ import hashlib
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
+from contextlib import closing
 
 
 class CommonTests(unittest.TestCase):
+    def test_native_fixture_closes_every_connection_before_returning(self):
+        from fixtures import make_home
+        opened=[];connect=sqlite3.connect
+        class TrackedConnection(sqlite3.Connection):
+            closed_explicitly=False
+            def close(self):
+                self.closed_explicitly=True
+                super().close()
+        def track(*args,**kwargs):
+            connection=connect(*args,factory=TrackedConnection,**kwargs);opened.append(connection);return connection
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                with patch('fixtures.sqlite3.connect',side_effect=track): make_home(Path(directory))
+                self.assertTrue(opened);self.assertTrue(all(connection.closed_explicitly for connection in opened))
+            finally:
+                for connection in opened: connection.close()
+
     def test_snapshot_includes_committed_wal_without_mutating_source_rows(self):
         from codex_migrate.common import snapshot_database, connect_readonly
         with tempfile.TemporaryDirectory() as d:
@@ -19,7 +38,7 @@ class CommonTests(unittest.TestCase):
                 writer.execute('INSERT INTO entries VALUES (?, ?)', (1, b'\x00\xffprivate fixture'))
                 writer.commit()
                 snapshot_database(source, dest)
-                with connect_readonly(dest) as copy:
+                with closing(connect_readonly(dest)) as copy:
                     self.assertEqual(copy.execute('SELECT payload FROM entries').fetchone()[0], b'\x00\xffprivate fixture')
                 self.assertEqual(writer.execute('SELECT count(*) FROM entries').fetchone()[0], 1)
                 with self.assertRaises(FileExistsError):

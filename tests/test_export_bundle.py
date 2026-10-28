@@ -6,7 +6,7 @@ import zipfile
 import stat
 import os
 from pathlib import Path
-from fixtures import make_home
+from fixtures import make_home,managed_connection
 from codex_migrate.compatibility import validate_profile
 from codex_migrate.discovery import inspect_home
 from codex_migrate.exporter import export_bundle
@@ -19,7 +19,7 @@ class ExportTests(unittest.TestCase):
     def tearDown(self): self.temp.cleanup()
     def test_exact_profile_and_unknown_index_rejected(self):
         self.assertTrue(validate_profile(self.fx['home']/'state_5.sqlite',self.fx['home']/'thread_history_1.sqlite')['profile_id'])
-        with sqlite3.connect(self.fx['home']/'state_5.sqlite') as db: db.execute('CREATE INDEX unknown_index ON threads(title)')
+        with managed_connection(self.fx['home']/'state_5.sqlite') as db: db.execute('CREATE INDEX unknown_index ON threads(title)')
         with self.assertRaises(MigrationError): inspect_home(self.fx['home'])
     def test_selective_clean_export_and_round_trip(self):
         result=export_bundle(self.fx['home'],self.base/'out.zip',project_ids=[self.fx['project_id']],check_idle=False)
@@ -85,7 +85,7 @@ class ExportTests(unittest.TestCase):
         with self.assertRaises(MigrationError): extract_bundle(self.base/'tampered.zip',self.base/'bad')
 
     def test_source_thread_creator_identity_is_not_transferred(self):
-        with sqlite3.connect(self.fx['home']/'state_5.sqlite') as db:
+        with managed_connection(self.fx['home']/'state_5.sqlite') as db:
             db.execute('UPDATE threads SET creator_user_id=?, creator_account_id=?',('synthetic-private-user','synthetic-private-account'))
         export_bundle(self.fx['home'],self.base/'out.zip',thread_ids=[self.fx['thread_id']],check_idle=False)
         with zipfile.ZipFile(self.base/'out.zip') as z:
@@ -95,7 +95,7 @@ class ExportTests(unittest.TestCase):
     def test_dependency_closure_does_not_include_unselected_sibling(self):
         # A and B share P: choosing A should export A/P, but not B.
         from fixtures import insert
-        with sqlite3.connect(self.fx['home']/'state_5.sqlite') as db:
+        with managed_connection(self.fx['home']/'state_5.sqlite') as db:
             db.row_factory=sqlite3.Row
             original=dict(db.execute('SELECT * FROM threads WHERE id=?',(self.fx['thread_id'],)).fetchone())
             for tid in ('synthetic-parent','synthetic-sibling'):
@@ -109,7 +109,7 @@ class ExportTests(unittest.TestCase):
 
     def test_shared_project_roots_are_stored_once(self):
         from fixtures import insert
-        with sqlite3.connect(self.fx['home']/'state_5.sqlite') as db:
+        with managed_connection(self.fx['home']/'state_5.sqlite') as db:
             insert(db,'projects',{'id':'synthetic-second-project','name':'Other','position':1,'created_at_ms':1,'updated_at_ms':1})
             insert(db,'project_roots',{'project_id':'synthetic-second-project','position':0,'path':str(self.fx['root'])})
         manifest=export_bundle(self.fx['home'],self.base/'out.zip',project_ids=[self.fx['project_id'],'synthetic-second-project'],check_idle=False)
@@ -159,7 +159,7 @@ class ExportTests(unittest.TestCase):
 
     def test_sidebar_only_membership_is_exported_without_global_state(self):
         legacy='synthetic-legacy-project'
-        with sqlite3.connect(self.fx['home']/'state_5.sqlite') as db:
+        with managed_connection(self.fx['home']/'state_5.sqlite') as db:
             db.execute('UPDATE threads SET project_id=NULL WHERE id=?',(self.fx['thread_id'],))
         global_state={'local-projects':{legacy:{'id':legacy,'name':'Synthetic sidebar','rootPaths':[str(self.fx['root'])],'createdAt':1,'updatedAt':2}},'app-server-project-id-by-legacy-project-id-by-host':{'local:'+str(self.fx['home']):{legacy:self.fx['project_id']}},'thread-project-assignments':{self.fx['thread_id']:{'projectId':legacy,'projectKind':'local'}},'thread-project-membership-host-ids':{self.fx['thread_id']:'local'},'project-order':[legacy],'private-unrelated-token':'must never export'}
         (self.fx['home']/'.codex-global-state.json').write_text(json.dumps(global_state))
@@ -225,7 +225,7 @@ class ExportTests(unittest.TestCase):
         # Even an explicitly selected project must not package full private DB pages.
         private=self.fx['home']
         (private/'auth.json').write_text('synthetic auth never packaged')
-        with sqlite3.connect(private/'state_5.sqlite') as db:
+        with managed_connection(private/'state_5.sqlite') as db:
             db.execute('UPDATE project_roots SET path=?',(str(private),))
         global_path=private/'.codex-global-state.json'
         state=json.loads(global_path.read_text())
@@ -251,12 +251,12 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(manifest['projects'],[]);self.assertEqual(len(manifest['roots']),1)
         target=make_home(self.base/'target',prefix='synthetic-unassigned-target')
         plan=plan_import(self.base/'out.zip',target['home'],self.base/'Imported',self.base/'work',check_idle=False);apply_plan(plan,check_idle=False)
-        with sqlite3.connect(target['home']/'state_5.sqlite') as db:
+        with managed_connection(target['home']/'state_5.sqlite') as db:
             cwd,pid=db.execute('SELECT cwd,project_id FROM threads WHERE id=?',(self.fx['unassigned_thread_id'],)).fetchone()
         self.assertIsNone(pid);self.assertTrue((Path(cwd)/'hello.txt').is_file())
 
     def test_unassigned_foreign_or_missing_cwd_fails_closed(self):
-        with sqlite3.connect(self.fx['home']/'state_5.sqlite') as db:
+        with managed_connection(self.fx['home']/'state_5.sqlite') as db:
             db.execute('UPDATE threads SET cwd=? WHERE id=?',(str(self.base/'missing-local-root'),self.fx['unassigned_thread_id']))
         with self.assertRaises(MigrationError): export_bundle(self.fx['home'],self.base/'out.zip',thread_ids=[self.fx['unassigned_thread_id']],check_idle=False)
 
@@ -304,9 +304,13 @@ class ExportTests(unittest.TestCase):
 
     def test_unreadable_project_tree_fails_closed(self):
         from unittest.mock import patch
-        def inaccessible_walk(root,*,followlinks=False,onerror=None):
-            if onerror: onerror(PermissionError('synthetic denied directory'))
-            return iter(())
+        real_walk=os.walk
+        def inaccessible_walk(root,*args,**kwargs):
+            if Path(root).resolve()==self.fx['root'].resolve():
+                onerror=kwargs.get('onerror')
+                if onerror: onerror(PermissionError('synthetic denied directory'))
+                return iter(())
+            return real_walk(root,*args,**kwargs)
         with patch('codex_migrate.exporter.os.walk',new=inaccessible_walk),self.assertRaises(MigrationError):
             export_bundle(self.fx['home'],self.base/'out.zip',project_ids=[self.fx['project_id']],check_idle=False)
         self.assertFalse((self.base/'out.zip').exists())

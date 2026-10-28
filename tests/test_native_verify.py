@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from fixtures import make_home,insert
+from fixtures import make_home,insert,managed_connection
 from codex_migrate.errors import MigrationError
 from codex_migrate.native_verify import verify_native
 
@@ -45,6 +45,7 @@ for line in sys.stdin:
   start=int(p.get('cursor','0'));result={'data':rows[start:start+1],'nextCursor':str(start+1) if start+1<len(rows) else None}
  else: raise RuntimeError('Forbidden native method: '+method)
  print(json.dumps({'id':r['id'],'result':result}),flush=True)
+s.close();h.close()
 '''
 
 class NativeVerifyTests(unittest.TestCase):
@@ -101,7 +102,7 @@ class NativeVerifyTests(unittest.TestCase):
 
     def test_rollout_paths_must_be_regular_files_inside_disposable_copy(self):
         external=self.base/'external.jsonl';external.write_text(self.fx['rollout'].read_text())
-        with sqlite3.connect(self.home/'state_5.sqlite') as db:
+        with managed_connection(self.home/'state_5.sqlite') as db:
             db.execute('UPDATE threads SET rollout_path=? WHERE id=?',(str(external),self.fx['thread_id']))
         with self.assertRaises(MigrationError): self.verify()
 

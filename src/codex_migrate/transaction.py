@@ -34,6 +34,10 @@ def _path(value, *, inspect=True):
             continue
         if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
             raise _error('Symlinks and junctions are not allowed: ' + str(part))
+        if part != path and not stat.S_ISDIR(info.st_mode):
+            # Windows lstat(file / child) can report FileNotFoundError rather
+            # than POSIX ENOTDIR, so a missing leaf cannot prove valid parents.
+            raise _error('Transaction path ancestor must be a directory: ' + str(part))
     return path
 
 
