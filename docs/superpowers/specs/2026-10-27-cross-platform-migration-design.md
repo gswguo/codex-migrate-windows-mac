@@ -77,7 +77,7 @@ flowchart TD
 
 ## 5. 设计时的模块分工
 
-以下树为最初分层草图，不是当前目录清单。alpha 将导入/恢复整合在 `operations.py`、`staging.py`、`transaction.py`，将平台函数放在 `platforms.py`，原生验证放在 `native_verify.py`；没有独立的 models/importer/recovery/receipts 模块。实际仓库为 `gswguo/codex-migrate-windows-mac`。
+以下树为最初分层草图，不是当前目录清单。alpha 将导入/恢复整合在 `operations.py`、`staging.py`、`transaction.py`，将平台函数放在 `platforms.py`，原生验证放在 `native_verify.py`；没有独立的 models/importer/recovery/receipts 模块。仓库名称为 `codex-migrate-windows-mac`。
 
 ```text
 codex-migrate-windows-mac/

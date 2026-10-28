@@ -16,7 +16,7 @@
 - No private chats, IDs, paths, credentials, original migration packages or database contents in Git/CI; schemas are structural metadata and fixtures synthetic.
 - Unknown profiles, unsafe archives, schema mismatch, missing dependency objects and same-ID content conflicts stop before target mutation.
 - First version is an alpha. Windows native desktop validation remains separately documented until real-device evidence exists. No automatic two-device merge.
-- Public destination authorized by user: `gswguo/codex-migrate-windows-mac`.
+- Repository name: `codex-migrate-windows-mac`.
 - No source credential/config/plugin/automation transfer. Restore must not overwrite later user edits.
 
 ## Review Focus

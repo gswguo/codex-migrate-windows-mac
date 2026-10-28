@@ -6,7 +6,7 @@
 
 ## 下载与准备
 
-到 [gswguo/codex-migrate-windows-mac](https://github.com/gswguo/codex-migrate-windows-mac) 下载 **Code → Download ZIP** 并解压；无需安装 Git。程序目录、私人迁移包和暂存目录保持分开。双击 `launchers` 中对应系统的启动器，或在系统终端运行它；源码不是已经包含 Python 的独立安装包。
+在本仓库页面选择 **Code → Download ZIP** 下载并解压；无需安装 Git。程序目录、私人迁移包和暂存目录保持分开。双击 `launchers` 中对应系统的启动器，或在系统终端运行它；源码不是已经包含 Python 的独立安装包。
 
 目标电脑必须先由官方 Codex 应用创建本机数据布局；如果尚未使用，先正常打开、登录并初始化，再完全退出。遇到数据库缺失或不兼容时停止，不手建 SQLite 表。原电脑登录继续留在原电脑，目标自己的登录继续留在目标；工具不迁移或覆盖凭据。
 

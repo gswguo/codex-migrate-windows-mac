@@ -8,11 +8,9 @@
 
 2026-10-28：macOS 原生 CLI `0.164.0-alpha.11.1` 已通过新建合成 home、选择性项目导入及未归属聊天导入目标的读取/分页/resume；详见[验证记录](docs/validation.md)。这不代表 Windows 桌面或实际文件点击验收。
 
-项目由社区独立开发，与 OpenAI 无隶属或背书关系。
-
 ## 下载与运行
 
-打开 [gswguo/codex-migrate-windows-mac](https://github.com/gswguo/codex-migrate-windows-mac)，使用 **Code → Download ZIP** 下载源码并解压到普通目录。无需学习 Git，不要把程序解压到 `.codex` 或私人迁移包里面。源码 ZIP 与包含个人项目/聊天的迁移 ZIP 是两种文件。
+在本仓库页面，使用 **Code → Download ZIP** 下载源码并解压到普通目录。无需学习 Git，不要把程序解压到 `.codex` 或私人迁移包里面。源码 ZIP 与包含个人项目/聊天的迁移 ZIP 是两种文件。
 
 如果目标电脑尚未使用过 Codex，先正常打开官方应用、完成自己的登录与初始化，再退出；工具需要目标已有且匹配的数据布局。源端和目标端登录各自保留，工具不复制、替换或要求上传登录凭据。
 

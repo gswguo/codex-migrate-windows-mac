@@ -1,6 +1,6 @@
 # 验证记录 / Validation record
 
-日期 / Date: **2026-10-28**。工具版本 / Tool: **0.1.0a1 alpha**。公开仓库：[gswguo/codex-migrate-windows-mac](https://github.com/gswguo/codex-migrate-windows-mac)。
+日期 / Date: **2026-10-28**。工具版本 / Tool: **0.1.0a1 alpha**。项目 / Project：[Codex Migrate Windows–Mac](../README.md)。
 
 本页只记录人工构造数据的验证结果，不包含私人迁移数据、个人路径、会话 ID 或私人案例统计。本机最终测试：**146 项通过**，包含两项启用真实 CLI 的一次性合成集成测试。GitHub CI 结果以仓库 Actions 页面为准。
 

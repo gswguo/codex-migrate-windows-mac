@@ -6,7 +6,7 @@ Requires Python 3.11+. The utility accepts only layouts matching a bundled adapt
 
 ## Download and prepare
 
-Download **Code → Download ZIP** from [gswguo/codex-migrate-windows-mac](https://github.com/gswguo/codex-migrate-windows-mac) and extract it. Git is not required. Keep program files separate from private bundles and staging directories. Double-click the appropriate file under `launchers`, or run it in the system terminal. Source downloads do not bundle Python.
+On this repository's page, choose **Code → Download ZIP**, then extract the download. Git is not required. Keep program files separate from private bundles and staging directories. Double-click the appropriate file under `launchers`, or run it in the system terminal. Source downloads do not bundle Python.
 
 The destination needs a layout initialized by the official Codex app. On a new computer, open the app, sign in and initialize normally, then fully exit. Stop on missing/incompatible databases instead of creating tables manually. Each computer keeps its own credentials; the utility does not transfer or overwrite them.
 

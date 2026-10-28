@@ -8,11 +8,9 @@ Selectively export, stage, and migrate local Codex projects and conversations, w
 
 On 2026-10-28, macOS native CLI `0.164.0-alpha.11.1` passed synthetic fresh-home, selective project-import, and unassigned-thread import read/pagination/resume checks. See the [validation record](docs/validation.md). This does not establish Windows desktop or actual file-click acceptance.
 
-This independent community project is not affiliated with or endorsed by OpenAI.
-
 ## Download and run
 
-Open [gswguo/codex-migrate-windows-mac](https://github.com/gswguo/codex-migrate-windows-mac), choose **Code → Download ZIP**, and extract into a normal directory. No Git knowledge is needed. Keep the program outside `.codex` and outside private migration packages. A source ZIP and a ZIP containing your personal migration data are different files.
+On this repository's page, choose **Code → Download ZIP**, and extract into a normal directory. No Git knowledge is needed. Keep the program outside `.codex` and outside private migration packages. A source ZIP and a ZIP containing your personal migration data are different files.
 
 On a new destination computer, first open the official Codex app, sign in and initialize your own local layout, then exit. The utility needs existing destination databases matching its profile. Source and destination keep their own credentials; the utility does not transfer or replace them.
 
